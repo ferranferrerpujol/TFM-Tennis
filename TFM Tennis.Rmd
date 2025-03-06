@@ -6,29 +6,70 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(ggplot2)
-
+library(readr)
+library(tidyr)
+library(tidyverse)  
+library(DataExplorer)
+library(dplyr)
+library(corrplot)
 ```
 
-## 1) Carreguem la base de dades
+## 1) Introducció
+
+En aquest primer apartat del treball ens centrarem en proporcionar una visió general del món del tennis i, en particular, de com es gestiona un partit de tennis no completat. S’explicarà la importància d’entendre les raons per les quals un partit pot no arribar a completar-se, així com les implicacions que això pot tenir per als jugadors, organitzadors dels tornejos i l’esport en general.
+
+Actualment, el tennis professional masculí s’organitza en una sèrie de tornejos internacionals repartits en cinc nivells, que difereixen tant a nivell mediàtic com econòmic i de punts per a la classificació ATP, els quals són: 4 Grand Slams (Wimbledon de Londres, Roland Garros de París, US Open de Nova York i l’Australian Open de Melbourne), ATP Tour (ATP Finals, ATP Masters 1000, ATP 500 i ATP 250), ATP Challenger Tour, ITF Men’s World Tennis Tour i Davis Cup (torneig disputat per països).
+
+Els diferents tornejos de l'ATP Tour són esdeveniments prestigiosos que atrauen els millors jugadors del món, oferint punts de classificació importants, grans premis econòmics, instal·lacions de primera classe i àmplia cobertura mediàtica. En canvi, els tornejos Challenger i Futures estan enfocats en jugadors emergents que busquen millorar el seu rànquing ATP i guanyar experiència. Els tornejos Challenger ofereixen menys punts i premis més modestos en comparació amb els tornejos ATP Tour, mentre que els tornejos Futures representen el nivell més bàsic del tennis professional, amb premis econòmics i punts per a la classificació mínims. En general, els tornejos de Futures i Challenger són fonamentals per al desenvolupament de nous talents, proporcionant oportunitats perquè els jugadors joves i de menor rànquing competeixin i progressin en la seva carrera esportiva. No obstant, aquest camí resulta complicat per a molts jugadors que difícilment poden sostenir-se econòmicament.
+
+La diferència en els premis econòmics entre els diferents nivells de tornejos en el circuit professional de tennis és notable i té un impacte profund en la carrera dels jugadors. Els tornejos de l'ATP Tour, incloent-hi els Grand Slams, ATP Finals, ATP Masters 1000, ATP 500 i ATP 250, ofereixen premis significativament més elevats. Per exemple, els guanyadors dels Grand Slams poden rebre al voltant de 2-3 milions de dòlars4 d’un pool total que arriba fins als 50-60 milions de dòlars, mentre que els guanyadors dels ATP Masters 1000 poden guanyar fins a 1 milió de dòlars.
+
+En canvi, els tornejos Challenger i Futures presenten premis molt menors, amb els guanyadors rebent només entre 2.000 i 3.600 dòlars als Futures i entre 5.000 i 20.000 dòlars als Challengers4. Aquesta desigualtat crea grans desafiaments financers per als jugadors de nivell inferior, que sovint han de cobrir les seves pròpies despeses de viatge, d’allotjament i d’entrenament, i depenen de patrocinis, suport familiar i altres fonts d'ingressos per poder competir. En canvi, els jugadors dels tornejos de l'ATP Tour, especialment els que competeixen en els Grand Slams i Masters 1000, poden obtenir ingressos molt més elevats que els permeten viure còmodament i reinvertir en la seva carrera professional.
+
+**Walkover/Default**
+
+Entenem un partit de tennis no completat com aquell partit que, havent- se iniciat o no, no s’ha arribat a disputar fins al final, tal i com el sistema de classificació per a aquell torneig indiqui. Dins de la gran varietat de raons que es poden trobar davant d’aquestes situacions, destaquem les següents:
+
+- **Canvis en les condicions climàtiques** com ara pluges intenses, forts vents o altes temperatures entre d’altres, que posin en risc la seguretat tant dels jugadors com dels espectadors, així com puguin impossibilitar la correcta realització del joc.
+
+- **Lesions inesperades** d’algun dels jugadors abans o durant la realització del partit.
+
+- **Malestar** per part d’algun dels jugadors que l’impossibiliti de participar en el partit.
+
+- **Conductes inapropiades** per part d’algun dels jugadors que violin el codi de conducta establert per l’ATP i, per tant, impliquin l’expulsió del jugador de la pista i del torneig.
+
+- **Circumstàncies personals** per part d’algun dels jugadors que l’impossibiliti a nivell físic i/o mental, com per exemple la mort d’un familiar.
+
+- **Errors administratius** per part de l’organització del torneig com per exemple una incorrecta comunicació de l’hora de joc d’un partit.
+
+- I per últim, que algun dels jugadors directament **rebutgi de jugar** per qualsevol raó diferent a les explicades anteriorment.
+
+
+## 2) Carga i Exploració del Dataset
 ```{r}
 load("/Users/ferranferrerpujol/Desktop/231004_atp_final.RData")
 dim(atp_final)
 names(atp_final)
+summary(atp_final)
+glimpse(atp_final)
 ```
-Es tracta d'un fitxer tipo .Rdata amb un total de 584806 entrades amb dades de 28 variables, 26 de les quals independents i dues variables resposta categòriques: **match_outcome** y **Final_Partit**. Ambdues presenten la mateixa informació però en un format diferent, motiu pel qual seleccionarem Final_Partit com a variable resposta d'interès, ja que presenta els resultats d'una forma més concisa i clara. 
 
-## 2) Processat de les dades
-En primer lloc, eliminarem la variable **sex** ja que totes les dades recollides fan referència a partits masculins, per la qual cosa, no ens serà gaire útil aquesta informació irrellevant per a l'estudi. També eliminarem la variable **tourney_level** ja que la variable tourney_category ens dona la mateixa informació; ambdues són variables categòriques amb dos nivells que informen si es tracta d'un torneig de nivell Challenger (ATP Challenger) o Futures (ITF Men's World Tennis Tour). De la mateixa manera, eliminarem la variable resposta **match_outcome** ja que, com hem dit abans, disposem d'una altra variable resposta, Final_Partit, la qual ens dona la mateixa informació en un format més clar i concís. Per tant, després del processat de les dades, acabem amb un total de 24 variables independents i 1 variable resposta. A priori, identifiquem 313164 missing values.  
-
+## 3) Processat de les dades
 ```{r}
 atp_final <- subset(atp_final, select = c(-sex, -tourney_level, -match_outcome))
 atp_final$round <- droplevels(atp_final$round)
 table(is.na(atp_final))
 ```
 
-## 3) Anàlisis descriptiu univariable i bivariable
+Com ja s’ha comentat, es tracta d'un fitxer de tipus .Rdata amb un total de 584.806 entrades amb dades de 28 variables, 26 de les quals independents i dues variables resposta categòriques: match_outcome y Final_Partit. Ambdues presenten la mateixa informació però en un format diferent, motiu pel qual seleccionarem Final_Partit com a variable resposta d'interès, ja que presenta els resultats d'una forma més concisa i clara.
+
+En primer lloc, eliminarem la variable sex ja que totes les dades recollides fan referència a partits masculins, per la qual cosa, no ens serà gaire útil aquesta informació irrellevant per a l'estudi. També eliminarem la variable tourney_level ja que la variable tourney_category ens dona la mateixa informació; ambdues són variables categòriques amb dos nivells que informen si es tracta d'un torneig de nivell Challenger (ATP Challenger) o Futures (ITF Men's World Tennis Tour). De la mateixa manera, eliminarem la variable resposta match_outcome ja que, com hem dit abans, disposem d'una altra variable resposta, Final_Partit, la qual ens dona la mateixa informació en un format més clar i concís.
+
+Per tant, després del processat de les dades, acabem amb un total de 24 variables independents i una variable resposta. A priori, identifiquem 313.164 valors faltant, que representen el 2,14% del total de valors.
+
+## 4) Anàlisis descriptiu univariable i bivariable
 ```{r}
 head(atp_final)
 str(atp_final)
@@ -92,6 +133,11 @@ barplot(sort(prop.table(table(atp_final_incomplete$Final_Partit))*100, decreasin
 
 ```
 
+Com es pot observar (Fig. 1), els primers resultats de l’exploració ens indiquen que el 73,35% dels partits són de nivell ITF Men’s World Tennis Tour, mentre que el 26,65% restant de nivell ATP Challenger Tour. Aquestes dades reflecteixen la major presència i abast dels tornejos ITF en el panorama del tennis professional, proporcionant més oportunitats als jugadors emergents per acumular experiència i punts de rànquing. En quant a les superfícies de joc, el 52,15% dels partits es van disputar sobre superfície d’argila (Clay), el 42% sobre superfície dura (Hard), el 4,68% sobre superfícies de moqueta (Carpet) i el 1,16% restant sobre superfície d’herba (Grass), la qual té elevats costos de manteniment en comparació amb les superfícies hard i clay.
+
+
+Per últim, el 96,26% dels partits disputats en aquells anys es van completar i únicament el 3,74% dels partits no es van completar, és a dir, 21.839 partits no van arribar a finalitzar-se, dels quals 19.314 van ser per retirement, 2.263 per walkover (W/O), 242 per default, 6 per abandonament i 14 unknown. Ara bé, si només tenim en compte el total de partits no completats, el 88,44% van ser per retirement, el 10,36% per walkover i el 1,11% per default (Fig. 1). Aquests resultats confirmen que les retirades per lesió han estat la causa més comuna per la qual un partit no es completa, seguit pels walkovers i, en menor mesura, pels defaults. Aquest patró està alineat amb les troballes prèvies en l'estat de l'art, que reflecteix la naturalesa més comuna dels walkovers, sovint causats per lesions físiques o fatiga, en comparació amb els defaults, que solen estar associats a comportaments antiesportius o incidents excepcionals.
+
 **Figura 2**
 ```{r}
 # Freqüència de Defaults i W/Os en cada categoria de torneig
@@ -129,7 +175,10 @@ barplot(percentatges, beside = TRUE, col = c("skyblue", "salmon"),
         names.arg = wo_def)
 
 ```
-Tal i com podem observar, tot i que gairebé el 75% dels partits registrats són de categoria ITF Men's World Tennis Tour, el percentatge de walkovers i defaults es manté constant entre ambdós categories de torneig. S'observa que un 0,39% dels partits d'ATP Challenger Tour van acabar per walkover, mentre que un 0,38% dels partits d'ITF Men's World Tennis Tour van acabar per walkover. De la mateixa manera, s'observa que un 0,034% dels partits d'ATP Challenger Tour van acabar per default, mentre que un 0,044% dels partits d'ITF Men's World Tennis Tour van acabar per default. 
+
+Pel que fa a la freqüència de walkovers i defaults en cada categoria (Fig. 2), s’observen 615 walkovers i 53 defaults en la categoria ATP Challenger Tour. Per contra, s’observen 1648 walkovers i 189 defaults en la categoria ITF Men’s World Tennis Tour.
+
+Tal i com es pot observar (Fig. 2), tot i que gairebé el 75% dels partits registrats són de categoria ITF Men's World Tennis Tour, el percentatge de walkovers i defaults es manté constant entre ambdues categories de torneig. S'observa que un 0,39% dels partits d'ATP Challenger Tour van acabar per walkover, mentre que en la categoria d'ITF Men's World Tennis Tour van acabar per walkover un 0,38% dels partits (p-value = 0,58). De la mateixa manera, s'observa que un 0,034% dels partits d'ATP Challenger Tour van acabar per default, mentre que en la categoria d'ITF Men's World Tennis Tour van acabar per default un 0,044% dels partits (p-value = 0,11). A priori, aquesta constància suggereix que els factors que condueixen a walkovers i defaults són intrínsecs al tennis professional i no estan significativament influenciats per la categoria del torneig.
 
 **Figura 3**
 ```{r}
@@ -171,7 +220,10 @@ barplot(data, beside = TRUE,
 legend("topright", legend = rownames(data), fill = c("skyblue", "salmon"))
 
 ```
-Si analitzem com es comporten els walkovers i defaults en funció de la superfície de la pista, veurem que es reparteixen de forma proporcional al nombre de partits disputats en cada superfície, sent la superfície d'argila (Clay) i la superfície dura (Hard), les superfícies on més walkovers i defaults s'han donat. De fet, s'han donat walkovers en el 0,37% dels partits sobre superficie Clay i en el 0,39% dels partits sobre superfície Hard. Pel que fa a defaults, s'han donat en el 0,042% dels partits sobre superficie Clay i en el 0,04% dels partits sobre superfície Hard. Per tant, a priori no s'observa una diferencia significativa entre el nombre de walkovers o el nombre de defaults respecte la superfície de la pista. 
+
+Si analitzem com es comporten els walkovers i defaults en funció de la superfície de la pista (Fig. 3), veurem que es reparteixen de forma proporcional al nombre de partits disputats en cada superfície, sent la superfície clay (n=1149, n=129) i la superfície hard (n=970, n=99), les superfícies amb més freqüència de walkovers i defaults respectivament. De fet, s'han donat walkovers en el 0,37% dels partits disputats en superfícies clay i en el 0,39% dels partits disputats sobre superfícies hard i grass (p-value = 0,49). Pel que fa a defaults, s'han donat en el 0,042% dels partits disputats sobre superfícies clay, en el 0,04% dels partits disputats sobre superfícies hard i en el 0,029% dels partits disputats sobre superfícies carpet (p-value = 0,19).
+
+Per tant, en el cas dels walkovers, les superfícies dures mostren una proporció d’incidència lleugerament superior comparada amb les superfícies d’argila però no significativa, mentre que en els defaults, la superfície d'herba té una proporció d’incidència marginalment superior (0,088%) no significativa respecte les altres superfícies (p-value = 0,06). Aquests resultats concorden amb l'estat de l'art, que suggereix que la superfície de joc pot influir les lesions dels jugadors, i per tant, seria lògic pensar que els jugadors amb cansament físic acumulat, veiessin més apropiat retirar-se i no forçar quan el torneig es disputa sobre una superfície dura, la qual presenta un risc major de lesions per impacte repetitiu, en comparació amb una superfície de terra batuda, encara que aquesta pot comportar un major desgast físic a causa a la seva naturalesa lenta que prolonga la durada dels partit
 
 **Figura 4**
 ```{r}
@@ -228,6 +280,9 @@ text(x = bp[4], y = 0.35, "*", cex = 2, col = "black")
 # Asterisco para "W/O" en "Qualifying Round" (índex 6)
 text(x = bp[6], y = 1.1, "*", cex = 2, col = "black")
 ```
+
+Per altra banda, si analitzem com es distribueixen els walkovers i defaults en funció del nivell de ronda (Fig. 4), observem per una banda que la majoria de walkovers es donen en rondes preliminars ja que és el nivell de ronda amb més partits registrats, seguit de rondes finals i, per últim, rondes classificatòries. S'observa un comportament similar en defaults, sent el nivell de ronda preliminatòria la que més n'acumula i en les rondes classificatòries no s’ha registrat cap default. No obstant, si ens fixem en els percentatges que representen per a cada nivell, s’han donat walkovers en el 0,69% dels partits disputats en rondes finals, en el 0,28% dels partits disputats en rondes preliminars i en el 1,03% dels partits disputats en rondes classificatòries, sent proporcions significativament diferents entre els tres nivells de ronda (p-value = 2,2e-16). Pel que fa a defaults, s’han donat en el 0,039% dels partits disputats en rondes finals i en el 0,043% dels partits disputats en rondes preliminars (p-value = 0,67). Aquest patró indica que els walkovers es produeixen majoritàriament en les fases inicials dels torneigs, possiblement a causa de la fatiga acumulada i les lesions prèvies dels jugadors, mentre que els defaults tendeixen a ocórrer en les etapes finals, on la pressió psicològica, la tensió competitiva i les expectatives dels jugadors augmenten a mesura que avancen en el torneig, fent de la gestió emocional un gran repte en aquestes fases.
+
 
 **Figura 5**
 ```{r}
@@ -295,6 +350,9 @@ legend("topright", legend = c("Default", "W/O"), fill = colores)
 text(x = bp[6], y = 1.56, "*", cex = 2, col = "black")
 ```
 
+Si analitzem més a fons quines són les rondes amb més freqüència de walkovers i defaults (Fig. 5), observem que la R16 (n=1030) és la que acumula més walkovers seguida de la QF (n=530), mentre que per als defaults, és la R32 (n=103) la que n’acumula més seguida de la R16 (n=79). Com ja s’ha esmentat anteriorment, no s’observa cap default en rondes classificatòries.
+No obstant, el major percentatge de walkovers s’observa en la ronda classificatòria Q2 amb un 1,48% dels partits disputats, seguit de la ronda classificatòria Q1 amb un 1,046% dels partits disputats. Tant la ronda preliminar R16 com la ronda final QF presenten un percentatge semblant, de 0,7% i 0,72% dels partits respectivament. En quant a defaults, el major percentatge es dona en la ronda preliminar R64 amb un 0,084% dels partits disputats en aquesta ronda. No s’observen diferències significatives.
+
 **Figura 6**
 ```{r}
 # Creació de la matriu de dades amb els números proporcionats
@@ -338,6 +396,9 @@ text(x = bp[2], y = 0.6, "*", cex = 2, col = "black")
 text(x = bp[4], y = 3.2, "*", cex = 2, col = "black")
 ```
 
+Finalment, si analitzem com es distribueixen els walkovers i defaults en funció de si el partit es juga al millor de 3 o 5 sets (Fig. 6), observem per una banda que la majoria de walkovers s’han donat en partits disputats a 3 sets ja que el 99,9% dels partits registrats s’han disputat a 3 sets. S’observa una freqüència de 2261 walkovers i 242 defaults per a partits disputats a 3 sets, i una freqüència de 2 walkovers i cap default en partits disputats a 5 sets.
+No obstant, el major percentatge de walkovers s’observa en partits disputats a 5 sets, representant el 2,94% dels partits. Per contra, s’observen diferències significatives (p-value = 0,01) amb la proporció de partits disputats a 3 sets que van acabar per walkover, el 0,38%, indicant que la durada i la intensitat del partit podrien influir més en la decisió del jugador de no presentar-se. D’altra banda, el 0,041% dels partits disputats a 3 sets van acabar per default.
+
 ```{r}
 # test de proporciones: wo ch, fut
 prop.test(x = c(615, 1648), n = c(155846, 428960),
@@ -372,7 +433,8 @@ prop.test(x = c(2,2261 ), n = c(68, 584738),
           alternative = "two.sided")
 ```
 
-## 4) Anàlisi epidemiològica
+## 5) Anàlisi Epidemiològica
+
 **Figura 7**
 ```{r}
 barplot(table(atp_final$year[atp_final$Final_Partit == "W/O"]),
@@ -413,6 +475,12 @@ legend("topleft", legend = "Default", fill = "skyblue")
 
 ```
 
+Per últim, s’analitzarà si hi ha hagut alguna tendència al llarg d'aquests anys tant per a walkovers com per a defaults. En l'histograma de freqüència de walkovers per any (Fig. 7), s'observa una tendència a l'alça, augmentant de forma significativa el nombre de walkovers cada any. De la mateixa manera, el nombre de retirements per any també ha augmentat de forma progressiva i similar al nombre de walkovers observats. Això pot ser a causa d'un augment del nombre de tornejos que es disputen anualment i, per consegüent, del nombre de partits tal i com es pot observar en la Figura 7.
+
+Per tant, és evident doncs, que les tendències a l’alça per ambdues situacions són conseqüència d’un augment en el nombre de tornejos i consegüentment, en el nombre de partits disputats cada any tal i com es pot observar a partir del 1990. D’aquesta manera, la contínua participació dels jugadors en diferents tornejos sense una correcta recuperació, comporta un desgast físic i mental elevat que es va acumulant, el qual pot derivar en diverses lesions.
+
+D’altra banda, si ens fixem en l'histograma de defaults per any, s'observa un augment significatiu en el nombre de defaults per any a partir de 1994 en comparació amb els anys anteriors. No obstant, a partir de 1994 no s'observa una tendència ni a l'alça ni a la baixa tot i haver-hi un augment progressiu del nombre de partits disputats per any. Sembla que el nombre de defaults per any es manté estable tot i haver-hi diversos anys en que el nombre de defaults es dispara considerablement (1997 i 1998, n=17).
+
 **Figura 8**
 ```{r}
 propwo <- atp_final %>% 
@@ -430,6 +498,10 @@ ggplot(propwo, aes(x= year, y = propwo)) +
 
 ```
 
+Per tal d’il·lustrar la tendència dels walkovers i defaults al llarg del període temporal seleccionat (1978-2019) en comparació amb el nombre de partits disputats cada any, es presenten els següents gràfics de proporció d’incidència de walkovers (Fig. 8) i defaults (Fig. 9) cada 1000 partits.
+
+Es pot observar que la proporció d’incidència de walkovers en els anys anteriors al 1990 fluctua de forma considerable, indicant una variabilitat notòria entre pics anuals que fluctuen entre 1 i 6. D’altra banda, en els anys posteriors al 1990, aquesta variabilitat entre pics anuals disminueix, suavitzant les fluctuacions entre 3 i 5. La línia de tendència general del gràfic (Fig. 8) indica que la proporció d’incidència de walkovers al llarg d’aquests anys ha anat augmentant de forma gradual i constant. Aquest increment progressiu indica que, tot i que la variació anual pot tenir alts i baixos, la tendència subjacent reflecteix un increment sostingut en la incidència de walkovers. Això suggereix que, amb el pas del temps, hi ha hagut una major freqüència relativa de walkovers en els partits de tennis, augmentant a poc a poc i de manera consistent. Aquesta tendència ascendent pot estar associada amb l'augment de la intensitat dels calendaris de competició, limitant el temps de recuperació dels jugadors entre tornejos.
+
 **Figura 9**
 ```{r}
 propdefault <- atp_final %>% 
@@ -445,6 +517,8 @@ ggplot(propdefault, aes(x= year, y = propdefault)) +
        y = "Proporció d'Incidència per 1000 partits") +
   theme_minimal()
 ```
+
+D’altra banda, s’observa que la proporció d’incidència de defaults en els anys anteriors al 2000 fluctua de forma considerable, indicant una variabilitat notòria entre pics anuals que fluctuen entre 0 i 1,25. En canvi, en els anys posteriors al 2000, aquesta variabilitat entre pics anuals disminueix, suavitzant les fluctuacions entre 0,15 i 0,65. La línia de tendència general del gràfic (Fig. 9) indica que la proporció d’incidència de defaults al llarg d’aquets anys ha anat disminuint de forma gradual i constant. Aquest decrement progressiu indica que, tot i que la variació anual pot tenir alts i baixos, la tendència subjacent reflecteix una disminució sostinguda en la incidència de defaults. Això suggereix que, amb el pas del temps, hi ha hagut una menor freqüència relativa de defaults en els partits de tennis, disminuint a poc a poc i de manera consistent.
 
 **Figura 10: PI walkovers PER nivell de ronda**
 ```{r}
@@ -566,6 +640,10 @@ ggplot(propwo_final_round, aes(x = year, y = propwo)) +
        y = "Proporció d'Incidència per 1000 partits") +
   theme_minimal()
 ```
+
+Per altra banda, si analitzem aquestes tendències en funció dels tres nivells de ronda al llarg dels anys, s’observen comportaments diferents (Fig. 10). Les rondes finals (Final Round) són les que presenten tendències generals de proporció d’incidència més estables tant per a walkovers com a defaults, sent la tendència de walkovers clarament constant al llarg de tot el període temporal i la tendència de defaults incrementant molt lleugerament. Per a rondes preliminars (Preliminary Round), s’observa una tendència general lleugerament a l’alça per walkovers mentre que per a defaults, s’observa una tendència lleugerament a la baixa, amb grans variacions entre pics anuals en els primers 10 anys dels registres.
+
+Finalment, per a rondes classificatòries (Qualifying Round), no s’observa cap tendència per a defaults, ja que no hi ha registres de defaults en aquest nivell de ronda. No obstant, s’observa una clara tendència a l’alça per a la proporció d’incidència de walkovers en aquest nivell de ronda al llarg dels anys, augmentant gairebé un punt per any. Cal destacar que la tendència general de walkovers en rondes classificatòries només s’observa a partir de l’any 2007.
 
 **Figura 11: PI defaults PER superfície**
 ```{r}
@@ -706,6 +784,10 @@ ggplot(propwo_final_round, aes(x = year, y = propwo)) +
   theme_minimal()
 ```
 
+Per altra banda, si analitzem aquestes tendències en funció del tipus de superfície de la pista al llarg dels anys, també s’observen comportaments diferents (Fig. 11). En primer lloc, destacar una clara tendència general a l’alça en la proporció d’incidència de walkovers sobre superfície dura o hard en comparació amb els altres dos tipus. De fet, tant les superfícies grass com clay, presenten tendències generals per als walkovers que van lleugerament a la baixa i amb variacions entre pics anuals que fluctuen poc. L’única superfície de joc que presenta tendències baixistes durant aquets anys tant per walkovers com per defaults és la superfície d’argila o clay.
+
+En segon lloc, pel que fa a la tendència general de defaults en superfície d’herba o grass (Fig. 11), s’observa un lleuger increment sostingut de la incidència de defaults, tot i haver-hi molts anys amb 0 registres i l’existència de pics molt notoris entre els anys 1995 i 2010. En darrer lloc, pel que fa a la tendència general de defaults en superfície dura o hard, s’observa un lleuger increment sostingut de la incidència de defaults amb grans fluctuacions entre els pics anuals.
+
 **Figura 12: PI walkovers PER categoria de torneig**
 ```{r}
 # Filtrar los datos solo para la ronda final (Final Round)
@@ -788,7 +870,15 @@ ggplot(propwo_final_round, aes(x = year, y = propwo)) +
   theme_minimal()
 ```
 
-**Figura 13 i 14: anàlisis de supervivència**
+Per últim, si analitzem aquestes tendències en funció de la categoria de torneig al llarg dels anys, es poden observar dos comportaments diferents (Fig. 12).
+
+En primer lloc, destacar una clara tendència general a l’alça en la proporció d’incidència de walkovers tant en la categoria ATP Challenger Tour com en la categoria ITF Men’s World Tennis Tour. Per altra banda, s’observa una tendència general de defaults clarament a la baixa en la categoria ATP Challenger Tour i una tendència general lleugerament a la baixa en la categoria ITF Men’s World Tennis Tour. Les variacions dels pics anuals fluctuen notòriament entre els diferents anys de l’estudi.
+
+En resum, l'anàlisi dels gràfics que representen les tendències generals de la proporció d'incidència de walkovers i defaults al llarg dels anys registrats, indica que els pics anuals dels defaults fluctuen més, mostrant extrems més pronunciats al llarg del temps. En contrast, en la majoria de gràfics, els pics anuals dels walkovers tendeixen a estabilitzar- se després de 1995. Aquest patró suggereix que, mentre que els defaults presenten una variabilitat més alta amb pics extrems, els walkovers mostren una tendència general més constant i menys volàtil en els darrers anys de l’estudi.
+
+## 6) Anàlisis de Supervivència
+
+**Figura 13 i 14** 
 ```{r}
 # Supervivencia WO desde 1978: curva Kaplan-Meier
 surv_obj_wo <- Surv(atp_final$year, atp_final$Walkover_numeric)
@@ -807,6 +897,18 @@ ggplot(data = as.data.frame(km_fit_def$time), aes(x = km_fit_def$time, y = km_fi
   theme_minimal()
 
 ```
+
+Finalment, en aquest últim apartat, s’han realitzat les corbes de supervivència dels partits de tennis tant per walkovers com per defaults al llarg del temps. Mitjançant l'anàlisi de les dades recollides des de 1978 fins al 2019, examinarem com varia la probabilitat de que succeeixin aquests esdeveniments, mostrant les tendències i patrons observats al llarg dels anys. Aquesta anàlisi proporcionarà una visió detallada sobre com la freqüència i la probabilitat d'aquests incidents han evolucionat en el món del tennis professional durant aquest període de temps extens.
+
+En primer lloc, pel que fa a la supervivència de partits per walkover (Fig. 13), es pot observar una clara tendència en la corba de supervivència de walkovers des de 1990. La probabilitat de que un partit no acabi en walkover disminueix progressivament des d'aquest període fins arribar a un valor de 0,985 al 2019. Això indica que, amb el temps, és més probable que els partits acabin amb walkover en comparació amb anys anteriors.
+
+Aquesta tendència pot ser explicada pel notable augment en el nombre total de partits disputats per any des de 1990. A mesura que el circuit de tennis professional s'ha expandit i s'han incorporat més tornejos i jugadors, s'ha creat una dinàmica on el nombre total de partits disputats també ha augmentat. Això, a la vegada, ofereix més oportunitats per a que ocorrin circumstàncies que portin a un walkover, com ara lesions dels jugadors, retirades abans del partit o decisions estratègiques. De la mateixa manera, els resultats obtinguts confirmen que la proporció d’incidència de walkovers al llarg d’aquets anys ha anat augmentant de forma gradual i constant, fent la que probabilitat de que un partit acabi per walkover augmenti lleugerament en comparació a anys enrere.
+
+Així doncs, la relació entre l'augment del nombre total de partits i la tendència creixent de walkovers és clara. La creixent activitat en el circuit incrementa la probabilitat global de que alguns partits acabin de manera prematura per walkover, com ho reflecteix la corba de supervivència. Aquesta combinació de factors il·lustra com les dinàmiques en el món del tennis professional han evolucionat durant les últimes dècades, afectant la freqüència i la incidència d'aquests esdeveniments en els partits de tennis.
+
+En segon lloc, pel que fa a la supervivència de partits per default (Fig. 14), es pot observar una tendència interessant en la corba de supervivència de default des de 1995. Iniciant el 1978 amb una probabilitat de supervivència del 100%, la corba mostra una lleugera però constant disminució en la probabilitat de no defaults fins arribar a aproximadament 0.9985 el 2019. Això indica que, amb el pas dels anys, la probabilitat que succeeixi un default s'ha mantingut generalment baixa i estable, encara que lleugerament major que a l'inici del període analitzat.
+
+Per tant, la probabilitat de que un partit no acabi en default disminueix progressivament indicant que, amb el temps, és una mica més probable que els partits acabin amb default en comparació amb anys anteriors. És important notar que encara que la proporció d'incidència de defaults ha mostrat una tendència a la baixa, la corba de supervivència reflecteix la probabilitat acumulada que passi un default en funció del temps des de l'inici de l'estudi. Això pot interpretar-se com que, malgrat una menor freqüència relativa de defaults per any a partir de l'any 2000, la probabilitat acumulada que un default succeeixi durant un partit en un any donat no ha variat de manera significativa, mantenint-se en nivells propers al màxim històric observat a l'inici del període estudiat.
 
 **Figura 15**
 ```{r}
@@ -833,6 +935,34 @@ y_vals_scaled <- y_vals * max(games_defaults_table) / max(y_vals)
 # Dibuixar la línia
 lines(x = barplot_heights, y = y_vals_scaled, col = "black", lwd = 2)
 ```
+
+
+D’altra banda, també s’ha realitzat una anàlisi de supervivència en defaults en funció del total de jocs disputats per tal de trobar algun patró o comportament que ens indiqui si existeix algun moment del partit on és més probable que succeeixi un default. Per fer-ho, s’ha utilitzat la variable games com a mesura de temps, ja que representa el progrés del partit abans que succeeixi un default. Al utilitzar el nombre total de jocs completats com a mesura de temps, es pot avaluar en quin punt del partit és més probable que succeeixi un default. A continuació es mostra un gràfic de barres de la freqüència de defaults en funció del nombre de jocs completats (Fig. 15).
+
+Sembla que hi ha una concentració de partits que van acabar en default en un rang particular de jocs completats, especialment entre 10 i 22 jocs. El valor mig del total de jocs disputats fins que succeeix el default és de 15,71. La mediana indica que la meitat dels defaults succeeixen abans del joc número 16 del partit i l’altra meitat després. Existeix una variabilitat significativa en el total de jocs on es produeix un default, tal i com indica la variància (61,71) i la desviació estàndard (7,85). Aquesta troballa suggereix que hi podria haver certs patrons o circumstàncies específiques durant aquests jocs que augmentin la probabilitat que un partit acabi en default. De fet, els resultats de la prova de chi-quadrat que s’ha realitzat per avaluar l'associació entre el nombre de jocs disputats fins al default i la freqüència d’aquets, ens porten a interpretar el següent.
+
+```{r}
+# Datos de juegos totales disputados hasta el default
+games <- c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 
+           19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33)
+defaults <- c(13, 1, 1, 1, 1, 6, 7, 10, 5, 5, 13, 13, 15, 9, 11, 9, 10, 6, 13, 
+              10, 12, 13, 9, 5, 5, 5, 7, 13, 3, 4, 3, 2, 1, 1)
+
+# Crear tabla de frecuencias observadas
+observed <- data.frame(Games = games, Defaults = defaults)
+
+# Prueba de Chi-cuadrado
+chisq_result <- chisq.test(observed$Defaults)
+
+# Mostrar los resultados
+print(chisq_result)
+```
+
+- En primer lloc, la prova de chi-quadrat ha mostrat un valor de p significativament baix (p-value = 1.182e-07), la qual cosa indica que hi ha una associació significativa entre el nombre de jocs disputats i l'ocurrència de defaults a els partits de tennis. En altres paraules, la freqüència de defaults no és uniforme al llarg dels jocs disputats, sinó que varia significativament.
+
+- En segon lloc, encara que la prova de chi-quadrat no ens diu directament en quin moment específic del partit succeeixen els defaults amb més freqüència (per exemple, al principi, a la meitat o al final del partit), sí que ens indica que hi ha una distribució no uniforme. Això significa que hi ha jocs disputats on és més probable que passi un default en comparació amb altres.
+
+En conclusió, la prova de chi-quadrat ens permet afirmar que l'ocurrència de defaults no és aleatòria al llarg dels jocs disputats en un partit de tennis, sinó que hi ha moments específics del partit on és més probable que passi un default en comparació amb altres moments.
 
 **Figura 16**
 ```{r}
@@ -864,26 +994,15 @@ legend("topright", legend = c("Inici", "Meitat", "Final"),
        lty = c(2, 2, 2), col = c("gray", "gray", "gray"), bty = "n")
 
 ```
+A continuació es mostra el gràfic de supervivència d’un partit al default (Fig. 16). Es pot observar que, arribats al joc número 10 del partit, la probabilitat de que hagi succeït un default és del 20% aproximadament. En canvi, arribats al joc número 20 del partit, la probabilitat que s’hagi donat un default és del 60%.
 
-```{r}
-# Datos de juegos totales disputados hasta el default
-games <- c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 
-           19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33)
-defaults <- c(13, 1, 1, 1, 1, 6, 7, 10, 5, 5, 13, 13, 15, 9, 11, 9, 10, 6, 13, 
-              10, 12, 13, 9, 5, 5, 5, 7, 13, 3, 4, 3, 2, 1, 1)
+Finalment, s’observa que la probabilitat de supervivència en arribar als 15 jocs des de l’inici del partit és del 50%. En altres paraules, per als partits que van acabar en default, hi ha una probabilitat del 50% que el default es doni abans d'arribar als 15 jocs. Aquest punt és un indicador clau que mostra quan és més probable que passi el default durant el transcurs d'un partit de tennis. De fet, podríem considerar que els moments més probables perquè es doni un default podrien estar concentrats cap a la meitat o cap al final del partit, on la tensió competitiva i la fatiga podrien jugar un paper crucial en el jugador.
 
-# Crear tabla de frecuencias observadas
-observed <- data.frame(Games = games, Defaults = defaults)
+Per últim, atès que els walkovers representen una situació en què un dels jugadors no participa al partit i, per tant, el joc no es duu a terme (games = 0), aquesta anàlisi de supervivència no seria apropiada en aquest cas.
 
-# Prueba de Chi-cuadrado
-chisq_result <- chisq.test(observed$Defaults)
+## 7) Model de Regressió Logística
 
-# Mostrar los resultados
-print(chisq_result)
-```
-
-
-**Figura 17 i 18: model reg log walkovers i model AJUSTAT**
+**Figura 17 i 18**
 ```{r}
 # Ajuste del modelo de regresión logística
 logistic_model <- glm(Walkover_numeric~ tourney_category + year + surface + best_of + round_level + dif_age + dif_rank,
@@ -908,6 +1027,19 @@ print(lr_test)
 print(p_value)
 ```
 
+En aquest últim apartat, s’ha realitzat una anàlisi de regressió logística per investigar els factors associats amb l'ocurrència de walkovers i defaults en els partits de tennis ja que és una tècnica adequada per modelar esdeveniments binaris, com és el cas. Els models que es presenten permeten estimar la probabilitat d'ocurrència d'aquests esdeveniments en funció de diverses variables explicatives, proporcionant una anàlisi robusta i interpretacions clares sobre com cada factor contribueix a la probabilitat de que un partit acabi en walkover o default. Entre aquestes variables s'inclouen la categoria del torneig, la superfície de la pista, el nombre de sets jugats, la ronda del torneig, la diferència d'edat entre els jugadors i la diferència al rànquing. Aquesta anàlisi multivariable proporciona una comprensió més profunda dels factors clau que influeixen en aquests resultats inesperats als partits de tennis.
+
+Començarem analitzant el model de regressió logística obtingut per a la probabilitat de l’ocurrència de walkovers (Fig. 17) en partits de tennis de tornejos ATP Previous Tour disputats entre 1978 i 2019.
+
+En primer lloc, pel que fa a les variables categòriques, la categoria de torneig ITF Men’s World Tennis Tour té una relació positiva i significativa amb la probabilitat de walkover. Això implica que els tornejos d’aquesta categoria tenen una major probabilitat de walkover en comparació amb la categoria de referència (ATP Challenger Tour). D’altra banda, jugar en rondes preliminars està associat amb una reducció significativa en la probabilitat de walkover en comparació amb la ronda de referència (Final Round). En canvi, la probabilitat de walkover augmenta significativament en rondes classificatòries. Finalment, jugar sobre superfícies de terra batuda o clay està associat amb una reducció en la probabilitat de walkover en comparació amb la superfície de referència (Carpet), però aquesta relació no és estadísticament significativa. De la mateixa manera, jugar sobre superfícies d’herba o grass està associat amb una reducció en la probabilitat de walkover encara que aquesta relació no és estadísticament significativa. En darrer lloc, jugar sobre superfícies dures o hard està associat amb una reducció en la probabilitat de walkover encara que aquesta relació tampoc és estadísticament significativa.
+
+Pel que fa a les variables contínues, una major diferència d’edat entre els jugadors està associat amb una reducció significativa en la probabilitat de walkover. Això suggereix que a mesura que la diferència d’edats entre els jugadors disminueix, la probabilitat d’un walkover augmenta. En contrast, una major diferència de rànquing entre els jugadors s’associa amb un augment significatiu en la probabilitat de walkover. Això suggereix que a mesura que la diferència de rànquing entre els dos jugadors augmenta, la probabilitat d’un walkover augmenta.
+
+En resum, les variables significatives que afecten la probabilitat d’ocurrència d’un walkover són la categoria del torneig, el nivell de ronda del torneig, la diferència d’edat i la diferència de rànquing. Les superfícies de la pista i el format de sets, 3 o 5, no mostren una relació significativa amb la probabilitat de walkover en aquest model. L’any en què es va disputar el partit tampoc mostra una relació significativa. El valor de la deviança residual del model i l’AIC indiquen un ajust raonable del model amb les dades. A continuació es mostra el resum del model de regressió logística ajustat (Fig. 18) per a la probabilitat de walkover.
+
+Per una banda, el model sense ajust té una deviança residual de 23939, mentre que el model ajustat té una deviança residual lleugerament més gran de 23945. Això indica que el model ajustat pot tenir un ajust lleugerament pitjor a les dades observades en comparació amb el model sense ajust. L’AIC del model sense ajust és de 23961, mentre que l’AIC del model ajustat és de 23957 (Fig. 18). Tot i que la diferència en els valors d’AIC és petita, l’AIC del model ajustat és lleugerament més baix. Això suggereix que el model ajustat proporciona un millor equilibri entre l’ajust del model i la seva complexitat en comparació amb el model sense ajust. En resum, tot i que la deviança residual del model ajustat és lleugerament més gran que la del model sense ajust, l’AIC més baix del model ajustat indica que aquest últim és preferible a causa de la seva millor capacitat de generalització i d’ajust més adequat a les dades observades.
+
+D’altra banda, per a comparar ambdós models, s’ha realitzat la proba d’hipòtesis utilitzant el Likelihood Ratio Test. S’ha obtingut un p-value de 0,32, el qual indica que no hi ha prou evidència per rebutjar la hipòtesi nul·la. Això suggereix que el model més complex no proporciona una millora significativa en l’ajust de les dades en comparació amb el model ajustat. En altres paraules, ambdós models no difereixen significativament entre si i, per tant, podem quedar-nos amb el model reduït que no inclou les variables year, surface i best_of, ja que no hi ha evidència suficient per demostrar que aquestes variables siguin necessàries per a la predicció de walkover.
 
 **Figura 19 i 20: model reg log defaults i model AJUSTAT**
 ```{r}
@@ -933,3 +1065,60 @@ p_value <- lr_test[2, "Pr(>Chi)"]
 print(lr_test)
 print(p_value)
 ```
+
+A continuació, s’analitzarà el model de regressió logística obtingut per a la probabilitat de l’ocurrència de defaults (Fig. 19) en partits de tennis de tornejos ATP Previous Tour disputats entre 1978 i 2019.
+
+En primer lloc, pel que fa a les variables categòriques, la categoria de torneig ITF Men’s World Tennis Tour mostra una relació positiva però no significativa amb la probabilitat de default en comparació amb la categoria de referència (ATP Challenger Tour). Pel que fa a l’any, es mostra una relació negativa i significativa, suggerint que a mesura que l’any augmenta, la probabilitat de default disminueix. Les superfícies de joc (terra batuda, herba i superfície dura), el format de sets, 3 o 5, i el nivell de ronda, no mostren una relació significativa amb la probabilitat de default.
+
+Pel que fa a les variables contínues, la diferència de rànquing entre els jugadors està associada a un augment significatiu en la probabilitat de default. Això suggereix que a mesura que la diferència de rànquing entre els dos jugadors augmenta, la probabilitat d’un default augmenta. En quant al total de jocs disputats, es mostra una relació negativa i significativa amb la probabilitat de default. En canvi, la diferència d’edat no mostra una relació significativa.
+
+En resum, les variables significatives que afecten la probabilitat de default són el total de jocs disputats i l’any del partit. La diferència de rànquing també té un impacte significatiu en la probabilitat de default, mentre que la diferència d’edat no mostra una relació significativa. La deviança residual i l’AIC indiquen un ajust raonable del model als dades. A continuació es mostra el resum del model de regressió logística ajustat (Fig. 20) per a la probabilitat de default.
+
+
+En primer lloc, comparant el model sense ajust amb el model ajustat, observem que la deviança residual del model sense ajust és de 3314,5 mentre que la deviança residual del model ajustat és lleugerament superior, amb un valor de 3325,1. Això suggereix que el model ajustat pot presentar un ajustament una mica més pobre a les dades observades en comparació amb el model sense ajust. Pel que fa a l’AIC, el model sense ajust té un valor de 3338,5 mentre que el model ajustat presenta un AIC lleugerament més baix, amb un valor de 3335,1. Encara que la diferència en els valors d’AIC és petita, el model ajustat sembla proporcionar un millor equilibri entre l’ajust del model i la seva complexitat, indicant una millor capacitat de generalització i ajust més adequat a les dades observades.
+
+En segon lloc, en relació amb la prova d’hipòtesi utilitzant el Likelihood Ratio Test, s’ha obtingut un p-value de 0,16. Aquest valor indica que no hi ha prou evidència per rebutjar la hipòtesi nul·la, suggerint que el model més complex no ofereix una millora significativa en l’ajust de les dades en comparació amb el model ajustat. En altres paraules, no es pot afirmar que hi hagi diferències significatives entre els dos models, i per tant, podríem preferir el model reduït, ja que no es disposa de suficient evidència per demostrar que les variables addicionals són necessàries per a la predicció dels defaults.
+
+Per concloure aquest apartat, s’ha demostrat que algunes variables tenen un paper destacat en la predicció d’ambdós esdeveniments. Pel que fa als walkovers, les variables que s’han identificat com a millors predictors són la categoria del torneig, el nivell de ronda del torneig, la diferència d’edat entre els jugadors i la diferència de punts al rànquing ATP. D’altra banda, pel que fa als defaults, les variables rellevants són la categoria del torneig, el total de jocs disputats, l’any del partit i la diferència de punts al rànquing ATP entre els jugadors. Tot i que s’ha realitzat un anàlisi exhaustiu, encara hi ha aspectes a considerar per a futures investigacions, com l’exploració de noves variables i l’ampliació dels períodes temporals analitzats. En conclusió, aquestes anàlisis proporcionen una comprensió més profunda dels factors que influeixen en l’ocurrència de walkovers i defaults en partits de tennis, obrint la porta a futures investigacions en aquest àmbit.
+
+## 8) Conclusions
+
+Aquest estudi ha abordat de manera exhaustiva l’anàlisi del patró epidemiològic dels walkovers i defaults en tornejos de tennis ATP Previous Tour. Mitjançant l'anàlisi dels registres històrics oficials que abasten des de 1978 fins al 2019, s'han identificat factors clau que influeixen l'ocurrència d'aquests esdeveniments, aportant una comprensió més profunda. A continuació es presenten les conclusions generals, així com la descripció del patró epidemiològic per a cada esdeveniment.
+
+En primer lloc, hi ha una major presència i abast de tornejos Futures en el panorama del tennis professional que de tornejos Challenger, proporcionant més oportunitats als jugadors emergents per acumular experiència i punts de rànquing. Les superfícies més comunes són clay (52,15%) i hard (42%), seguides de carpet (4,68%) i grass (1,16%). El 96,26% dels partits disputats es completen amb èxit. Les retirades per lesió són la causa més comuna per la qual un partit no és completa (88,44%), seguit pels walkovers (10,36%) i, en menor mesura, pels defaults (1,11%). En segon lloc, les anàlisis dels dos patrons epidemiològics de walkovers i defaults en tornejos de tennis ATP Previous Tour revelen diverses tendències significatives.
+
+**Patró epidemiològic dels walkovers**
+
+La proporció d’incidència de walkovers ha augmentat de forma gradual i constant al llarg dels anys de l’estudi, mostrant una tendència creixent sostinguda amb fluctuacions més estables. En conseqüència, la probabilitat que un partit acabi en walkover augmenta progressivament al llarg dels anys, probablement influenciat per una major activitat en el circuit professional observada des de 1990. L’ocurrència de walkovers s’associa de forma significativa amb les categories de torneig, encara que ambdues mostren proporcions d’incidència semblants i una tendència general a l’alça, els partits de la categoria ITF Men’s World Tennis Tour presenten una major probabilitat d’acabar per walkover, el qual es pot associar als recursos econòmics més limitats de què disposen els jugadors joves, com ara un menor accés a fisioterapeutes, entrenadors i suport mèdic necessari per prevenir lesions. Per altra banda, aquests tornejos són menys importants i els punts de classificació i els premis econòmics en tornejos Futures poden no suposar una gran motivació com per arriscar la salut i empitjorar una lesió, així com pot haver-hi un nivell de competència més desigual on el jugadors menys favorits optin per retirar-se si senten que tenen poques possibilitats de guanyar. Per últim, en la categoria Futures, competeixen jugadors joves i menys experimentats, els quals són més propensos a lesions.
+
+D’altra banda, l’ocurrència de walkovers no s’associa amb el tipus de superfícies, les quals presenten tendències lleugerament a la baixa en grass i clay, i clarament a l’alça en hard. A més a més, s’associa significativament l’ocurrència de walkovers amb el nivell de ronda del torneig. La major probabilitat s’observa principalment en les rondes classificatòries, la qual mostra una tendència general alcista en els darrers anys, seguit de les rondes preliminars i les rondes finals, ambdues mantenint la tendència al llarg dels anys. Aquest patró indica que els walkovers es produeixen majoritàriament en les fases inicials dels torneigs; possiblement la fatiga acumulada, les lesions prèvies dels jugadors, la falta de recuperació adequada entre tornejos o l’estratègia del jugador, faciliten la decisió prematura de no seguir competint en el torneig.
+
+En darrera instància, els partits a 5 sets tenen una incidència significativament més alta de walkovers que els partits a 3 sets, indicant que la durada i la intensitat del partit influeixen més en la decisió del jugador de no competir. Finalment, a mesura que la diferència de rànquing augmenta, també ho fa la probabilitat de walkover, probablement a causa de la percepció de desavantatge competitiu per part del jugador de menor rànquing, mentre que a mesura que la diferència d’edats disminueix, la probabilitat de walkover augmenta.
+
+**Patró epidemiològic dels defaults**
+La proporció d’incidència general de defaults ha disminuït de forma gradual i constant al llarg dels anys de l’estudi, mostrant una tendència decreixent sostinguda amb fluctuacions bastant irregulars. Això suggereix que les mesures adoptades per reduir els defaults poden haver estat més efectives en comparació amb els walkovers, que van en augment. En conseqüència, la probabilitat que un partit acabi per default s'ha mantingut relativament estable, encara que lleugerament més alta comparada amb anys anteriors.
+
+En primer lloc, l’ocurrència de defaults no s’associa de forma significativa amb les categories de torneig, que mostren proporcions d’incidència semblants. No obstant, és lleugerament més baixa en la categoria ATP Challenger Tour, on els jugadors són més madurs, ja han agafat més experiència de torneig i fortalesa mental, i poden controlar millor els impulsos, els comportaments imprudents, la pressió de la seva carrera com a tennista professional i la pressió econòmica d’haver de guanyar. No obstant, aquesta última mostra una tendència general de defaults a la baixa mentre que la categoria ITF Men’s World Tennis Tour presenta una tendència estable.
+
+En segon lloc, tampoc s’associa amb el tipus de superfícies, que mostren proporcions d’incidència semblants, amb tendències generals que es mantenen per hard i grass i baixen en clay. Tampoc s’associen amb el nivell de ronda del torneig, observant-se una tendència a l’alça per a les rondes finals i a la baixa per a les rondes preliminars. D’altra banda, l'ocurrència de defaults no és aleatòria al llarg dels jocs disputats en un partit de tennis, sinó que hi ha moments específics del partit on és més probable que passi un default en comparació amb altres moments. Els moments més probables perquè es doni un default són cap a la meitat o cap al final del partit, on la tensió competitiva i la fatiga juguen un paper crucial en el jugador. Un nombre més elevat de jocs disputats augmenta la probabilitat de defaults, possiblement a causa del desgast mental i físic. De la mateixa manera que passa amb els walkovers, una major diferència de rànquing s'associa amb una probabilitat més alta de defaults.
+
+
+En resum, els walkovers han augmentat progressivament al llarg dels anys, especialment en tornejos ITF Men's World Tennis Tour, a causa de factors com ara limitacions econòmiques i menor accés a recursos mèdics i d'entrenament. No estan significativament associats a les superfícies de joc, però són més freqüents a les rondes inicials i en partits a 5 sets. A més, la diferència de rànquing i la proximitat en edat entre jugadors també augmenten la seva incidència. D'altra banda, els defaults han disminuït gradualment i han suggerit l'efectivitat de mesures preventives. Encara que no estan significativament relacionats amb superfícies o categories de tornejos, són més probables en rondes finals i en moments específics del partit a causa de la fatiga i tensió competitiva, amb més incidència quan hi ha una major diferència de rànquing entre els jugadors.
+
+Conèixer els factors que influeixen en els walkovers i defaults pot ajudar a dissenyar estructures de tornejos que minimitzin aquests incidents, com ara ajustant el calendari per evitar la fatiga excessiva dels jugadors. Els entrenadors poden utilitzar aquesta informació per preparar millor els seus jugadors, tenint en compte els factors de risc identificats. Aquestes troballes reforcen la necessitat d'un enfocament holístic en la gestió de la salut dels jugadors, que consideri tant els aspectes físics com els psicològics. Els entrenadors i els equips mèdics han de treballar conjuntament per desenvolupar estratègies de prevenció i recuperació efectives, i per proporcionar suport emocional als jugadors. Aquest enfocament integrat no només milloraria la qualitat de vida dels jugadors, sinó que també podria reduir la incidència de walkovers i defaults, contribuint a la integritat i l'atractiu dels tornejos de tennis professional.
+
+Tot i l'abast exhaustiu de l'estudi, hi ha limitacions que cal tenir en compte. Primer, hi ha altres variables potencialment rellevants que no s'han inclòs en aquest estudi, com ara factors psicològics o condicions específiques de salut dels jugadors, que podrien influir en la decisió de no competir. A més, l'ampliació del període d'anàlisi a anys més recents podria proporcionar dades actualitzades sobre tendències i patrons emergents, permetent una comprensió més precisa de la situació actual. Finalment, seria útil realitzar estudis comparatius entre tornejos d’ATP Tour i d’ATP Previous Tour o d’ATP Tour i WTA Tour per identificar diferències específiques i factors únics que puguin influir en els walkovers i defaults. Futures investigacions haurien d'abordar aquestes limitacions, incloent més variables i ampliant l'abast temporal, per proporcionar una visió més completa i detallada dels patrons i factors que influeixen en aquests esdeveniments.
+
+En conclusió, l'estudi ha proporcionat una visió detallada dels factors associats a l'ocurrència de walkovers i defaults en el tennis professional, oferint una base sòlida per a futures investigacions i per a la millora de la gestió de tornejos.
+
+**Limitacions**
+
+- Manca de variables rellevants com ara factors psicològics i condicions de salut dels jugadors.
+
+- Manca de registres més actuals.
+
+**Futures línies d’investigació**
+
+- Estudis comparatius entre tornejos d’ATP Tour i d’ATP Previous Tour per identificar diferències específiques entre categories i factors únics que puguin influir en els walkovers i defaults.
+
+- Estudis comparatius entre tornejos d’ATP Tour i WTA Tour per identificar diferències específiquesentre gèneres i factors únics que puguin influir en els walkovers i defaults.
